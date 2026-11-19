@@ -206,6 +206,9 @@ function readT3State() {
 }
 
 const LIVE_STATUSES = new Set(["queued", "preparing", "starting", "running", "waiting"]);
+// A card left open after its turn ended (a machine-link request, say) waits on nothing running:
+// it is answered after a resume, so it must not hold the machine up.
+const ENDED_STATUSES = new Set(["completed", "failed", "cancelled", "idle"]);
 
 /** Any agent run in flight, including one waiting on an approval: stopping would kill it. */
 async function checkWorking() {
@@ -220,7 +223,7 @@ async function checkWorking() {
       t.activeRunId != null ||
       t.activityRunStatus != null ||
       LIVE_STATUSES.has(t.status) ||
-      t.pendingRuntimeRequest != null ||
+      (t.pendingRuntimeRequest != null && !ENDED_STATUSES.has(t.status)) ||
       (t.pendingBackgroundTasks?.length ?? 0) > 0,
   );
   const subagents = live.filter((t) => t.lineage?.relationshipToParent === "subagent").length;
